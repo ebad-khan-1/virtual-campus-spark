@@ -4,10 +4,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Users, Trophy } from "lucide-react";
+
+const ADMIN_SECRET_CODE = "123456789"; // Replace with your secure admin code
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -17,11 +31,17 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<"student" | "organizer">("student");
+  const [role, setRole] = useState<"student" | "organizer" | "admin">(
+    "student"
+  );
+  const [adminCode, setAdminCode] = useState("");
 
+  // Check if user already logged in
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         navigate("/");
       }
@@ -48,6 +68,11 @@ const Auth = () => {
         });
         navigate("/");
       } else {
+        // Admin code verification
+        if (role === "admin" && adminCode !== ADMIN_SECRET_CODE) {
+          throw new Error("Invalid admin secret code.");
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -74,9 +99,10 @@ const Auth = () => {
 
           toast({
             title: "Account created!",
-            description: "Welcome to VUCEMS. You can now start exploring events.",
+            description:
+              "Welcome to VUCEMS. You can now start exploring events.",
           });
-          navigate("/");
+          navigate("/"); // Dashboard will show correct view based on role
         }
       }
     } catch (error: any) {
@@ -97,29 +123,43 @@ const Auth = () => {
         <div className="hidden md:block space-y-6">
           <div>
             <h1 className="text-5xl font-bold text-primary mb-2">VUCEMS</h1>
-            <p className="text-xl text-muted-foreground">Virtual University Campus Event Management System</p>
+            <p className="text-xl text-muted-foreground">
+              Virtual University Campus Event Management System
+            </p>
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex items-start gap-3">
               <Calendar className="w-6 h-6 text-primary mt-1" />
               <div>
-                <h3 className="font-semibold text-foreground">Discover Events</h3>
-                <p className="text-sm text-muted-foreground">Browse and register for academic, sports, and cultural events</p>
+                <h3 className="font-semibold text-foreground">
+                  Discover Events
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Browse and register for academic, sports, and cultural events
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Users className="w-6 h-6 text-accent mt-1" />
               <div>
-                <h3 className="font-semibold text-foreground">Organize Events</h3>
-                <p className="text-sm text-muted-foreground">Create and manage events with ease</p>
+                <h3 className="font-semibold text-foreground">
+                  Organize Events
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Create and manage events with ease
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <Trophy className="w-6 h-6 text-success mt-1" />
               <div>
-                <h3 className="font-semibold text-foreground">Track Participation</h3>
-                <p className="text-sm text-muted-foreground">Keep track of your event history and provide feedback</p>
+                <h3 className="font-semibold text-foreground">
+                  Track Participation
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Keep track of your event history and provide feedback
+                </p>
               </div>
             </div>
           </div>
@@ -177,26 +217,56 @@ const Auth = () => {
               </div>
 
               {!isLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="role">I am a</Label>
-                  <Select value={role} onValueChange={(value: "student" | "organizer") => setRole(value)}>
-                    <SelectTrigger id="role">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="organizer">Event Organizer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">I am a</Label>
+                    <Select
+                      value={role}
+                      onValueChange={(
+                        value: "student" | "organizer" | "admin"
+                      ) => setRole(value)}
+                    >
+                      <SelectTrigger id="role">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="student">Student</SelectItem>
+                        <SelectItem value="organizer">
+                          Event Organizer
+                        </SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {role === "admin" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="adminCode">Admin Secret Code</Label>
+                      <Input
+                        id="adminCode"
+                        type="password"
+                        placeholder="Enter admin code"
+                        value={adminCode}
+                        onChange={(e) => setAdminCode(e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
+                </>
               )}
 
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
+                {loading
+                  ? "Please wait..."
+                  : isLogin
+                  ? "Sign In"
+                  : "Create Account"}
               </Button>
 
               <div className="text-center text-sm">
-                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                {isLogin
+                  ? "Don't have an account? "
+                  : "Already have an account? "}
                 <button
                   type="button"
                   onClick={() => setIsLogin(!isLogin)}
